@@ -8,7 +8,7 @@ Created on Thu Feb 20 15:02:35 2025
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.ticker import MultipleLocator, AutoMinorLocator
+from matplotlib.ticker import AutoMinorLocator
 
 from nelder_mead import nelder_mead, log_likelihood
 
@@ -56,10 +56,8 @@ for st in file_list:
         ax0.plot(time, color, c='k', lw=0.8)
         ax0.plot(time, color, 'o', c='k', ms=6.5)
         
-        ax0.xaxis.set_major_locator(MultipleLocator(1))
-        
         ax0.yaxis.set_minor_locator(AutoMinorLocator(5))  
-        ax0.xaxis.set_minor_locator(AutoMinorLocator(12))
+        ax0.xaxis.set_minor_locator(AutoMinorLocator(10))
         
         ax0.tick_params(axis='both', which='major',direction='in',
                                 bottom=True,top=True,right=True,left=True,
@@ -82,6 +80,3 @@ for st in file_list:
         fig0.suptitle("{0} Colored Noise".format(name), fontsize=45, y=0.91)
         plt.tight_layout()
         plt.savefig(output_dir + name + ".png", dpi=400)
-        
-        
-        

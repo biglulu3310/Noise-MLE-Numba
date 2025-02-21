@@ -9,8 +9,8 @@ from numba import jit
 import numpy as np
 
 #===============================================
-@jit(nopython=True, cache=True)
-def create_C(sigma_pl, kappa, dt):
+@jit(nopython=True)
+def create_U(sigma_pl, kappa, dt):
     N = len(dt)
     U = np.eye(N)
     h = np.ones(N)
@@ -24,29 +24,45 @@ def create_C(sigma_pl, kappa, dt):
             U[j, j + i] = h[i]
        
     scale_factors = sigma_pl * (dt ** (-kappa / 4))
+           
     for j in range(N):
-        U[j, :] *= scale_factors[j]
+        for k in range(N):
+            U[j, k] *= scale_factors[j]
     
-    return np.dot(U.T, U)
+    return U.T
 
 
 #===============================================
-@jit(nopython=True, cache=True)
+@jit(nopython=True)
+def forward_substitution(L, b):
+    N = len(b)
+    x = np.zeros(N)
+    
+    for i in range(N):
+        sum_val = 0.0
+        for j in range(i):
+            sum_val += L[i, j] * x[j]
+        x[i] = (b[i] - sum_val) / L[i, i]
+        
+    return x
+
+
+@jit(nopython=True)
 def log_likelihood(theta, noise, dt):
     # thata[0]: amp, theta[1]: kappa
     N = len(noise)
-    C = create_C(theta[0], theta[1], dt)
+    U = create_U(theta[0], theta[1], dt)
     r = noise.ravel()
     
-    U = np.linalg.cholesky(C).T
-    
     ln_det_C = 0.0
+    
     for i in range(0, N):
         ln_det_C += 2 * np.log(U[i, i])
+        
+    #U_inv_r = np.linalg.solve(U, r)
+    U_inv_r = forward_substitution(U, r)
     
-    U_inv_r = np.linalg.solve(U, r)
-    r_T_C_inv_r = np.dot(U_inv_r.T, U_inv_r)
-    
+    r_T_C_inv_r = U_inv_r.T @ U_inv_r
     n_logL = ln_det_C + r_T_C_inv_r
     
     return n_logL
@@ -54,7 +70,7 @@ def log_likelihood(theta, noise, dt):
 
 #===============================================
 @jit(nopython=True)
-def nelder_mead(func, x, noise, dt, step=0.1, tol=1e-2, max_itr=50, 
+def nelder_mead(func, x, noise, dt, step=0.1, tol=1e-6, max_itr=60, 
                 alpha=1., gamma=2., rho=0.5, sigma=0.5):
     n = len(x)
     simplex = np.zeros((n+1, n))
